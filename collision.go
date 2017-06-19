@@ -15,59 +15,95 @@ import (
 	"hash"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 )
 
-var hasher hash.Hash
-var version int = 9
-var threads int = 2
+type Message struct {
+	count     int
+	hash      string
+	datablock []byte
+}
+
+var version int = 12
+var done bool = false
 
 func main() {
 	// Program banner
-	fmt.Println("Collision-inator! ver", version, "\n")
+	fmt.Printf("Collision-inator v%d\n", version)
 
-	// Set up command line arguments
+	// Set up and parse command line arguments
 	hashPrefix := flag.String("p", "", "Hash prefix to match.")
 	hashChoice := flag.Int("a", 2, "Hash algorithm.")
+	threads := flag.Int("t", 1, "Number of threads to spawn.")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]%s", os.Args[0], "\n")
 		fmt.Fprintf(os.Stderr, "Options: %s", "\n")
 		fmt.Fprintf(os.Stderr, "\t-a <hash id> Hash algorithm.\n\t\tAvailable hash algorithms:\n\t\t0: md5\n\t\t1: sha1\n\t\t2: sha256\n\t\t3: sha512\n\t\t4: md4\n\t\t5: ripemd160\n\t\t6: sha3-224\n\t\t7: sha3-256\n\t\t8: sha3-384\n\t\t9: sha3-512\n")
 		fmt.Fprintf(os.Stderr, "\t-p <prefix> Hash prefix to match.\n")
-		fmt.Fprintf(os.Stderr, "\nExample: %s -a 2 -p \"6517\"", os.Args[0])
+		fmt.Fprintf(os.Stderr, "\t-t <threads> Number of threads to spawn.\n")
+		fmt.Fprintf(os.Stderr, "\nExample: %s -a 2 -p \"6517\" -t 4", os.Args[0])
 	}
 	flag.Parse()
 
-	// Test for a user supplied prefix to hunt for.
+	// Test for a user supplied prefix.
 	if *hashPrefix == "" {
 		fmt.Println("Missing prefix. Use -h for help.")
 		return
 	}
-	// Set hash type
-	hasher = setHash(*hashChoice)
 	fmt.Println("Hunting prefix:", *hashPrefix)
-	if hasher == nil {
-		fmt.Println("\nInvalid hash type. Use -h for help.\n")
-		return
-	}
+
 	// Seed PRNG
 	rand.Seed(time.Time.UnixNano(time.Now()))
 
-	// Brute force the hash algorithm until a hash is found that
-	// matches the user supplied prefix.
-	hashGuess := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-	p := []byte{00}
-	c := 0
-	for hashGuess[:(len(*hashPrefix))] != *hashPrefix {
-		c++
-		p = get16RandomBytes()
-		hasher.Write(p)
-		hashGuess = hex.EncodeToString(hasher.Sum(nil))
+	// set up thread synchronization channel
+	dataChan := make(chan Message)
+
+	// Start threads
+	for x := 0; x < *threads; x++ {
+		// Set hash type
+		hasher, hashName := setHash(*hashChoice)
+		if hasher == nil {
+			fmt.Println("\nInvalid hash type. Use -h for help.\n")
+			return
+		}
+		// Thread function
+		go func(hasher hash.Hash) {
+			// Brute force the hash algorithm until a hash is found that
+			// matches the user supplied prefix.
+			hashGuess := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+			p := []byte{00}
+			c := 0
+			// Loop until the prefix is found.
+			for hashGuess[:(len(*hashPrefix))] != *hashPrefix {
+				// done will be set true if another thread finds the prefix.
+				if done {
+					dataChan <- Message{c, "", []byte{}}
+					return
+				}
+				c++
+				hasher.Reset()
+				p = get16RandomBytes()
+				hasher.Write(p)
+				hashGuess = hex.EncodeToString(hasher.Sum(nil))
+			}
+			// Prefix is found!
+			done = true
+			dataChan <- Message{c, strings.Join([]string{hashName, hashGuess}, ": "), p}
+		}(hasher)
 	}
+	count := 0
 	fmt.Println("")
-	fmt.Println(hashGuess)
-	fmt.Println("From data block:", p, "\n")
-	fmt.Println("Processed", c, "hashes.")
+	// Gather data from all the threads.
+	for x := 0; x < *threads; x++ {
+		m := <-dataChan
+		count = count + m.count
+		if m.hash != "" {
+			fmt.Println(m.hash)
+			fmt.Println("From data block (hex encoded):", hex.EncodeToString(m.datablock), "\n")
+		}
+	}
+	fmt.Println("Processed", count, "total hashes.")
 }
 
 func get16RandomBytes() []byte {
@@ -81,39 +117,29 @@ func get16RandomBytes() []byte {
 	return p
 }
 
-func setHash(choice int) hash.Hash {
+func setHash(choice int) (hash.Hash, string) {
 	switch choice {
 	case 0:
-		fmt.Println("MD5")
-		return md5.New()
+		return md5.New(), "MD5"
 	case 1:
-		fmt.Println("SHA1")
-		return sha1.New()
+		return sha1.New(), "SHA1"
 	case 2:
-		fmt.Println("SHA256")
-		return sha256.New()
+		return sha256.New(), "SHA256"
 	case 3:
-		fmt.Println("SHA512")
-		return sha512.New()
+		return sha512.New(), "SHA512"
 	case 4:
-		fmt.Println("MD4")
-		return md4.New()
+		return md4.New(), "MD4"
 	case 5:
-		fmt.Println("RIPEMD160")
-		return ripemd160.New()
+		return ripemd160.New(), "RIPEMD160"
 	case 6:
-		fmt.Println("SHA3-224")
-		return sha3.New224()
+		return sha3.New224(), "SHA3-224"
 	case 7:
-		fmt.Println("SHA3-256")
-		return sha3.New256()
+		return sha3.New256(), "SHA3-256"
 	case 8:
-		fmt.Println("SHA3-384")
-		return sha3.New384()
+		return sha3.New384(), "SHA3-384"
 	case 9:
-		fmt.Println("SHA3-512")
-		return sha3.New512()
+		return sha3.New512(), "SHA3-512"
 	default:
-		return nil
+		return nil, "Unknown"
 	}
 }
