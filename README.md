@@ -5,16 +5,16 @@ Generates cryptographic hashes of randomly selected 16-byte paylods until
 a match is found with a user defined partial (or full) hash.
 
 Supported hashes:
-	MD5
-	SHA1
-	SHA256
-	SHA512
-	MD4
-	RIPEMD160
-	SHA3-224
-	SHA3-256
-	SHA3-384
-	SHA3-512
+* MD5
+* SHA1
+* SHA256
+* SHA512
+* MD4
+* RIPEMD160
+* SHA3-224
+* SHA3-256
+* SHA3-384
+* SHA3-512
 
 # License
 
