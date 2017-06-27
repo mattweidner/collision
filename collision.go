@@ -49,7 +49,7 @@ type Message struct {
 	datablock []byte
 }
 
-var version int = 14
+var version int = 15
 var done bool = false
 
 func main() {
