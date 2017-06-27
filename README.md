@@ -16,6 +16,30 @@ Supported hashes:
 * SHA3-384
 * SHA3-512
 
+# Usage
+```
+Collision-inator v14
+Usage: collision [options]
+Options:
+        -a <hash id> Hash algorithm.
+                Available hash algorithms:
+                0: md5
+                1: sha1
+                2: sha256 (default)
+                3: sha512
+                4: md4
+                5: ripemd160
+                6: sha3-224
+                7: sha3-256
+                8: sha3-384
+                9: sha3-512
+        -p <prefix> Hash prefix to match.
+        -t <threads> Number of threads to spawn. (default: 1)
+
+Example: MD5, search for prefix "6517", use 4 threads.
+         collision -a 0 -p "6517" -t 4
+```
+
 # License
 
 MIT License
