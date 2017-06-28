@@ -29,7 +29,6 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
-	"encoding/binary"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -49,7 +48,7 @@ type Message struct {
 	datablock []byte
 }
 
-var version int = 15
+var version int = 16
 var done bool = false
 
 func main() {
@@ -118,7 +117,7 @@ func main() {
 				}
 				c++
 				hasher.Reset()
-				p = get16RandomBytes()
+				p = get16RandomChars()
 				hasher.Write(p)
 				hashGuess = hex.EncodeToString(hasher.Sum(nil))
 			}
@@ -135,21 +134,20 @@ func main() {
 		count = count + m.count
 		if m.hash != "" {
 			fmt.Println(m.hash)
-			fmt.Println("From data block (hex encoded):", hex.EncodeToString(m.datablock), "\n")
+			fmt.Println("From string:", string(m.datablock), "\n")
 		}
 	}
 	fmt.Println("Processed", count, "total hashes.")
 }
 
-func get16RandomBytes() []byte {
-	n0 := rand.Uint64() // 8 bytes
-	n1 := rand.Uint64() // 8 bytes
-	p := make([]byte, 8)
-	q := make([]byte, 8)
-	binary.LittleEndian.PutUint64(p, n0) // Convert Uint64 to byte array.
-	binary.LittleEndian.PutUint64(q, n1)
-	p = append(p, q[0], q[1], q[2], q[3], q[4], q[5], q[6], q[7])
-	return p
+func get16RandomChars() []byte {
+	var r []byte
+	dictionary := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvqxyz0123456789"
+	l := len(dictionary) - 1
+	for i := 0; i < 16; i++ {
+		r = append(r, dictionary[rand.Intn(l)])
+	}
+	return r
 }
 
 func setHash(choice int) (hash.Hash, string) {
@@ -179,7 +177,7 @@ func setHash(choice int) (hash.Hash, string) {
 	}
 }
 
-func validatePrefix(prefix string) (bool) {
+func validatePrefix(prefix string) bool {
 	var hexDigits string = "0123456789abcdef"
 	for _, c := range prefix {
 		for i, d := range hexDigits {
