@@ -32,6 +32,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"github.com/jzelinskie/whirlpool"
 	"golang.org/x/crypto/md4"
 	"golang.org/x/crypto/ripemd160"
 	"golang.org/x/crypto/sha3"
@@ -48,7 +49,7 @@ type Message struct {
 	datablock []byte
 }
 
-var version int = 16
+var version int = 19
 var done bool = false
 
 func main() {
@@ -62,7 +63,7 @@ func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]%s", os.Args[0], "\n")
 		fmt.Fprintf(os.Stderr, "Options: %s", "\n")
-		fmt.Fprintf(os.Stderr, "\t-a <hash id> Hash algorithm.\n\t\tAvailable hash algorithms:\n\t\t0: md5\n\t\t1: sha1\n\t\t2: sha256 (default)\n\t\t3: sha512\n\t\t4: md4\n\t\t5: ripemd160\n\t\t6: sha3-224\n\t\t7: sha3-256\n\t\t8: sha3-384\n\t\t9: sha3-512\n")
+		fmt.Fprintf(os.Stderr, "\t-a <hash id> Hash algorithm.\n\t\tAvailable hash algorithms:\n\t\t0: md5\n\t\t1: sha1\n\t\t2: sha256 (default)\n\t\t3: sha512\n\t\t4: md4\n\t\t5: ripemd160\n\t\t6: sha3-224\n\t\t7: sha3-256\n\t\t8: sha3-384\n\t\t9: sha3-512\n\t\t10: whirlpool")
 		fmt.Fprintf(os.Stderr, "\t-p <prefix> Hash prefix to match.\n")
 		fmt.Fprintf(os.Stderr, "\t-t <threads> Number of threads to spawn. (default: 1)\n")
 		fmt.Fprintf(os.Stderr, "\nExample: MD5, search for prefix \"6517\", use 4 threads.\n")
@@ -172,6 +173,8 @@ func setHash(choice int) (hash.Hash, string) {
 		return sha3.New384(), "SHA3-384"
 	case 9:
 		return sha3.New512(), "SHA3-512"
+	case 10:
+		return whirlpool.New(), "WHIRLPOOL"
 	default:
 		return nil, "Unknown"
 	}
